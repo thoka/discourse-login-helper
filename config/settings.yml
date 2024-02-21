@@ -1,0 +1,3 @@
+plugins:
+  login_helper_enabled:
+    default: false
