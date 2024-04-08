@@ -1,3 +1,3 @@
 en:
   site_settings:
-    login_helper_enabled: "Enable Discourse Login Helper. This adds user email to links to Discourse and redirects to the linked page after login."
+    loginhelper_enabled: "Enable Discourse-Login-Helper. This adds user email to links to Discourse and redirects to the linked page after login."
