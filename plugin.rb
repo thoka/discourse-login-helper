@@ -23,10 +23,9 @@ after_initialize do
       end
     end
 
-    # if username is provided in url, we redirect to login page directly on failed topic access
+    # if username is provided in url, redirect to login page directly on invalid access if user is not logged in
     module ApplicationControllerExtension
       def rescue_discourse_actions(type, status_code, opts = nil)
-        path = request.env["PATH_INFO"]
 
         return super(type, status_code, opts) if type != :invalid_access || current_user.present?
 
