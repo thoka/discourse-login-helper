@@ -126,7 +126,7 @@ after_initialize do
       def links_to_our_discourse?(link)
         our_domain = URI.parse(Discourse.base_url).host
         linked_domain = URI.parse(link).host
-        puts "🔵 links_to_our_discourse? #{our_domain} == #{linked_domain}"
+        # puts "🔵 links_to_our_discourse? #{our_domain} == #{linked_domain}"
         linked_domain == our_domain
       end
     end
