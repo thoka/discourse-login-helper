@@ -1,0 +1,8 @@
+de:
+  site_settings:
+    login_helper_enabled: "Aktivieren Sie Discourse-Login-Helper. Dies fügt den Links zu diesem Discourse die Benutzer-E-Mail hinzu und leitet nach dem Login auf die verlinkte Seite weiter."
+  login_helper:
+    mail_sent_to: "Wir haben Ihnen an die Adresse <strong>%{to}</strong> eine Mail mit einem Link zum Einloggen geschickt."
+    click_link: "Bitte klicken Sie auf den Link in der Mail."
+    search_spam: "Wenn Sie keine Mail erhalten haben, überprüfen Sie bitte Ihren Spam-Ordner."
+    contact_info: "Schreiben Sie uns bei Problemen gerne an <a href=\"mailto:%{contact}\">%{contact}</a>."

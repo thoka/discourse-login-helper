@@ -1,3 +1,3 @@
 plugins:
-  loginhelper_enabled:
+  login_helper_enabled:
     default: true

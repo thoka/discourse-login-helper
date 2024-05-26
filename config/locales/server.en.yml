@@ -1,3 +1,8 @@
 en:
   site_settings:
-    loginhelper_enabled: "Enable Discourse-Login-Helper. This adds user email to links to Discourse and redirects to the linked page after login."
+    login_helper_enabled: "Enable Discourse-Login-Helper. This adds user email to links to Discourse and redirects to the linked page after login."
+  login_helper:
+    mail_sent_to: "We have sent you an email to the address <strong>%{to}</strong> with a link to log in."
+    click_link: "Please click on the link in the e-mail."
+    search_spam: "If you have not received an e-mail, please check your spam folder."
+    contact_info: "If you have any problems, please write to us at <a href=\"mailto:%{contact}\">%{contact}</a>."
