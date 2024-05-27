@@ -35,6 +35,7 @@ after_initialize do
 
       expires_now
       params.require(:login)
+      params.require(:destination_url)
 
       RateLimiter.new(nil, "email-login-hour-#{request.remote_ip}", 6, 1.hour).performed!
       RateLimiter.new(nil, "email-login-min-#{request.remote_ip}", 3, 1.minute).performed!
@@ -49,7 +50,11 @@ after_initialize do
           DiscourseEvent.trigger(:before_email_login, user)
 
           email_token =
-            user.email_tokens.create!(email: user.email, scope: EmailToken.scopes[:email_login])
+            user.email_tokens.create!(
+              email: user.email,
+              scope: EmailToken.scopes[:email_login],
+              destination_url: params[:destination_url],
+            )
 
           Jobs.enqueue(
             :critical_user_email,
@@ -137,6 +142,39 @@ after_initialize do
       end
     end
 
+    module SessionControllerExtension
+      def email_login
+        # puts "🔵 email_login params: #{params.to_json}"
+        token = params[:token]
+        matched_token = EmailToken.confirmable(token, scope: EmailToken.scopes[:email_login])
+        user = matched_token&.user
+
+        check_local_login_allowed(user: user, check_login_via_email: true)
+
+        rate_limit_second_factor!(user)
+
+        if user.present? && !authenticate_second_factor(user).ok
+          return render(json: @second_factor_failure_payload)
+        end
+
+        if user = EmailToken.confirm(token, scope: EmailToken.scopes[:email_login])
+          if login_not_approved_for?(user)
+            return render json: login_not_approved
+          elsif payload = login_error_check(user)
+            return render json: payload
+          else
+            raise Discourse::ReadOnly if staff_writes_only_mode? && !user&.staff?
+            user.update_timezone_if_missing(params[:timezone])
+            log_on_user(user)
+
+            return(render json: success_json.merge(destination_url: matched_token.destination_url))
+          end
+        end
+
+        render json: { error: I18n.t("email_login.invalid_token", base_url: Discourse.base_url) }
+      end
+    end
+
     # if username is provided in url, redirect to login page directly on invalid access if user is not logged in
     module ApplicationControllerExtension
       def rescue_discourse_actions(type, status_code, opts = nil)
@@ -149,14 +187,11 @@ after_initialize do
         # puts "🔵 params #{params}"
         # puts "🔵 current_user #{current_user} present: #{current_user.present?}"
 
-        cookies[:email] = params[:login] if params[:login].present?
-        cookies[:email] ||= params[:email] if params[:email].present?
-        cookies[:email] ||= params[:username] if params[:username].present?
-        cookies[:destination_url] = request.env["PATH_INFO"]
+        destination_url = request.env["PATH_INFO"]
 
-        if cookies[:email].present?
-          l = URI.encode_uri_component cookies[:email]
-          d = URI.encode_uri_component cookies[:destination_url]
+        if params[:login].present?
+          l = URI.encode_uri_component if params[:login].present?
+          d = URI.encode_uri_component destination_url
           redirect_to "/login-helper/send-login-mail?login=#{l}&destination_url=#{d}"
         else
           super(type, status_code, opts)
@@ -167,7 +202,8 @@ after_initialize do
 
   reloadable_patch do |plugin|
     ApplicationController.prepend LoginHelper::ApplicationControllerExtension
-    UserNotifications.class_eval { prepend LoginHelper::BuildEmailHelperExtension }
     Email::MessageBuilder.prepend LoginHelper::MessageBuilderExtension
+    SessionController.prepend LoginHelper::SessionControllerExtension
+    UserNotifications.class_eval { prepend LoginHelper::BuildEmailHelperExtension }
   end
 end
