@@ -6,3 +6,5 @@ de:
     click_link: "Bitte klicken Sie auf den Link in der Mail."
     search_spam: "Wenn Sie keine Mail erhalten haben, überprüfen Sie bitte Ihren Spam-Ordner."
     contact_info: "Schreiben Sie uns bei Problemen gerne an <a href=\"mailto:%{contact}\">%{contact}</a>."
+    redirect_to_login_page: "Weitere Login-Optionen öffnen"
+    

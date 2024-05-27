@@ -11,9 +11,6 @@ PLUGIN_NAME ||= "login-helper".freeze
 after_initialize do
   # if username is provided in url, we redirect to login page directly providing the username in cookies
 
-  # test: http://localhost:4200/t/weiteres-geheimes-thema/68?email=thomas.kalka@gmail.com
-  #
-
   module ::LoginHelper
     class Engine < ::Rails::Engine
       engine_name PLUGIN_NAME
@@ -21,14 +18,19 @@ after_initialize do
     end
   end
 
-  ::LoginHelper::Engine.routes.draw { get "/" => "login_helper#send_login_mail" }
-  ::Discourse::Application.routes.append { mount ::LoginHelper::Engine, at: "/send-login-mail" }
+  ::LoginHelper::Engine.routes.draw do
+    get "/send-login-mail" => "login_helper#send_login_mail"
+    post "/redirect-to-login" => "login_helper#redirect_to_login"
+  end
+  ::Discourse::Application.routes.append { mount ::LoginHelper::Engine, at: "/login-helper" }
 
   class LoginHelper::LoginHelperController < ::ApplicationController
     skip_before_action :preload_json, :check_xhr, :redirect_to_login_if_required
 
     def send_login_mail
       raise Discourse::NotFound if !SiteSetting.enable_local_logins_via_email
+      raise Discourse::NotFound if !SiteSetting.login_helper_enabled
+
       return redirect_to path("/") if current_user
 
       expires_now
@@ -60,15 +62,19 @@ after_initialize do
 
       @to = params[:login]
 
-      json = success_json
-      json[:hide_taken] = SiteSetting.hide_email_address_taken
-      json[:user_found] = user_presence unless SiteSetting.hide_email_address_taken
+      # json = success_json
+      # json[:hide_taken] = SiteSetting.hide_email_address_taken
+      # json[:user_found] = user_presence unless SiteSetting.hide_email_address_taken
 
       append_view_path(File.expand_path("../app/views", __FILE__))
       render template: "send_login_mail", layout: "no_ember", locals: { hide_auth_buttons: true }
     rescue RateLimiter::LimitExceeded
       # TODO: test
       render_error(I18n.t("rate_limiter.slow_down"))
+    end
+
+    def redirect_to_login
+      redirect_to "/login"
     end
   end
 
@@ -131,11 +137,6 @@ after_initialize do
       end
     end
 
-    module SessionControllerExtension
-      def send_email_login
-      end
-    end
-
     # if username is provided in url, redirect to login page directly on invalid access if user is not logged in
     module ApplicationControllerExtension
       def rescue_discourse_actions(type, status_code, opts = nil)
@@ -154,11 +155,9 @@ after_initialize do
         cookies[:destination_url] = request.env["PATH_INFO"]
 
         if cookies[:email].present?
-          # TODO:
-          # - send email to user with login link
-          # - redirect to message page
-
-          redirect_to "/u/send-email-login"
+          l = URI.encode_uri_component cookies[:email]
+          d = URI.encode_uri_component cookies[:destination_url]
+          redirect_to "/login-helper/send-login-mail?login=#{l}&destination_url=#{d}"
         else
           super(type, status_code, opts)
         end
@@ -168,8 +167,6 @@ after_initialize do
 
   reloadable_patch do |plugin|
     ApplicationController.prepend LoginHelper::ApplicationControllerExtension
-    SessionController.prepend LoginHelper::SessionControllerExtension
-
     UserNotifications.class_eval { prepend LoginHelper::BuildEmailHelperExtension }
     Email::MessageBuilder.prepend LoginHelper::MessageBuilderExtension
   end
