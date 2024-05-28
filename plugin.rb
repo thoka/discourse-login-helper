@@ -1,6 +1,6 @@
 # name: discourse-login-helper
 # about: shorten process of loging in by email
-# version: 0.3
+# version: 0.4
 # authors: Thomas Kalka
 # url: https://github.com/thoka/discourse-login-helper
 # frozen_string_literal: true
@@ -66,10 +66,6 @@ after_initialize do
       end
 
       @to = params[:login]
-
-      # json = success_json
-      # json[:hide_taken] = SiteSetting.hide_email_address_taken
-      # json[:user_found] = user_presence unless SiteSetting.hide_email_address_taken
 
       append_view_path(File.expand_path("../app/views", __FILE__))
       render template: "send_login_mail", layout: "no_ember", locals: { hide_auth_buttons: true }
