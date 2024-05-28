@@ -9,12 +9,12 @@
   <p><%= I18n.t "login_helper.click_link" %></p>
   <p><%= I18n.t "login_helper.search_spam" %></p>
   <p><%= raw I18n.t "login_helper.contact_info", contact: SiteSetting.contact_email %></p>
-
-  <%= form_tag("/login-helper/redirect-to-login") do %>
+  <%# TODO: learn a smarter way to generate this URL %>
+  <% d = URI.encode_www_form_component @destination_url %>
+  <% l = URI.encode_www_form_component @to %>
+  <%= form_tag("/login-helper/redirect-to-login?destination_url=#{d}&login=#{l}") do %>
     <%= submit_tag t('login_helper.redirect_to_login_page') , class: 'btn' %>
   <%- end %>
 </div>
 
-
 <% content_for :title do %><%= @title %><% end %>
-

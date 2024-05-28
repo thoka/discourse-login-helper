@@ -34,12 +34,12 @@ after_initialize do
       return redirect_to path("/") if current_user
 
       expires_now
-      params.require(:login)
-      params.require(:destination_url)
+      @to = params.require(:login)
+      @destination_url = params.require(:destination_url)
 
       RateLimiter.new(nil, "email-login-hour-#{request.remote_ip}", 6, 1.hour).performed!
       RateLimiter.new(nil, "email-login-min-#{request.remote_ip}", 3, 1.minute).performed!
-      user = User.human_users.find_by_username_or_email(params[:login])
+      user = User.human_users.find_by_username_or_email(@to)
       user_presence = user.present? && !user.staged
 
       if user
@@ -53,7 +53,7 @@ after_initialize do
             user.email_tokens.create!(
               email: user.email,
               scope: EmailToken.scopes[:email_login],
-              destination_url: params[:destination_url],
+              destination_url: @destination_url,
             )
 
           Jobs.enqueue(
@@ -75,6 +75,10 @@ after_initialize do
     end
 
     def redirect_to_login
+      destination_url = params.require(:destination_url)
+      login = params.require(:login)
+      cookies[:email] = { value: login, expires: 1.hour.from_now }
+      cookies[:destination_url] = { value: destination_url, expires: 1.hour.from_now }
       redirect_to "/login"
     end
   end
@@ -178,7 +182,6 @@ after_initialize do
 
         return super(type, status_code, opts) if type != :invalid_access || current_user.present?
 
-        # puts "🔵 rescue_discourse_actions type=#{type} opts=#{opts}"
         # puts "🔵 PATH_INFO=#{request.env["PATH_INFO"]}"
         # puts "🔵 params #{params}"
         # puts "🔵 current_user #{current_user} present: #{current_user.present?}"
@@ -186,8 +189,9 @@ after_initialize do
         destination_url = request.env["PATH_INFO"]
 
         if params[:login].present?
-          l = URI.encode_uri_component if params[:login].present?
+          l = URI.encode_uri_component params[:login]
           d = URI.encode_uri_component destination_url
+
           redirect_to "/login-helper/send-login-mail?login=#{l}&destination_url=#{d}"
         else
           super(type, status_code, opts)
