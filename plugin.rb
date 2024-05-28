@@ -1,5 +1,5 @@
 # name: discourse-login-helper
-# about: shorten process of loging in by email
+# about: shorten process of logging in by email
 # version: 0.4
 # authors: Thomas Kalka
 # url: https://github.com/thoka/discourse-login-helper
