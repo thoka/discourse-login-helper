@@ -3,6 +3,7 @@
 # version: 0.4
 # authors: Thomas Kalka
 # url: https://github.com/thoka/discourse-login-helper
+# meta_topic_id: 309676
 # frozen_string_literal: true
 
 enabled_site_setting :login_helper_enabled
