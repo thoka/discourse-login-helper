@@ -1,6 +1,6 @@
 # name: discourse-login-helper
 # about: shorten process of logging in by email
-# version: 0.4
+# version: 0.5
 # authors: Thomas Kalka
 # url: https://github.com/thoka/discourse-login-helper
 # meta_topic_id: 309676
@@ -99,7 +99,7 @@ after_initialize do
         opts ||= {}
         @to = to
         # puts "🔵 MBE::init opts=#{opts.to_yaml}"
-        if html_override = opts[:html_override]
+        if SiteSetting.login_helper_enabled && html_override = opts[:html_override]
           fragment = Nokogiri::HTML5.fragment(html_override)
           fragment
             .css("a")
@@ -116,16 +116,22 @@ after_initialize do
 
       def body
         body = super()
+        return body unless SiteSetting.login_helper_enabled
         # puts "🔵 body #{body.to_json}"
         body.gsub!(URI.regexp) { |match| add_user_to_forum_links(match) } if body && body.present?
         body
       end
 
+      def escape_non_ascii(s)
+        s.chars.map { |char| char.ascii_only? ? char : CGI.escape(char) }.join
+      end
+
       def add_user_to_forum_links(link)
-        return link unless link.present?
-        if links_to_our_discourse?(link) && !link.include?("/session")
+        return link if link.blank?
+        escaped_link = escape_non_ascii(link)
+        if links_to_our_discourse?(escaped_link) && !escaped_link.include?("/session")
           # puts "🔵 Changed #{link}"
-          link = URI.parse(link)
+          link = r(escaped_link)
           query = URI.decode_www_form(link.query || "")
           link.query = URI.encode_www_form(query << ["login", @to])
           link.to_s
@@ -133,11 +139,13 @@ after_initialize do
           # puts "🟡 UNCHANGED #{link}"
           link
         end
+      rescue StandardError
+        link
       end
 
-      def links_to_our_discourse?(link)
+      def links_to_our_discourse?(escaped_link)
         our_domain = URI.parse(Discourse.base_url).host
-        linked_domain = URI.parse(link).host
+        linked_domain = URI.parse(escaped_link).host
         # puts "🔵 links_to_our_discourse? #{our_domain} == #{linked_domain}"
         linked_domain == our_domain
       end

@@ -8,6 +8,7 @@ After using the there provided login-link the user will be redirected to A.
 
 ## Changelog
 
+0.5 fix handling of links containing unicode chars; respect disabling better
 0.4 store destination_url's in email-tokens and redirect there during login procedure
 0.3 enrich all links in notifications to discourse with user information
 
