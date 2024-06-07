@@ -131,7 +131,7 @@ after_initialize do
         escaped_link = escape_non_ascii(link)
         if links_to_our_discourse?(escaped_link) && !escaped_link.include?("/session")
           # puts "🔵 Changed #{link}"
-          link = r(escaped_link)
+          link = URI.parse(escaped_link)
           query = URI.decode_www_form(link.query || "")
           link.query = URI.encode_www_form(query << ["login", @to])
           link.to_s
