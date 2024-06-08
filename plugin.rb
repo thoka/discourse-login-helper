@@ -1,6 +1,6 @@
 # name: discourse-login-helper
 # about: shorten process of logging in by email
-# version: 0.5
+# version: 0.6
 # authors: Thomas Kalka
 # url: https://github.com/thoka/discourse-login-helper
 # meta_topic_id: 309676
@@ -186,8 +186,27 @@ after_initialize do
 
     # if username is provided in url, redirect to login page directly on invalid access if user is not logged in
     module ApplicationControllerExtension
+      def redirect_to_login_if_required
+        return super unless SiteSetting.login_helper_enabled
+        if params[:login].present?
+          redirect_to_send_login_mail
+        else
+          super
+        end
+      end
+
+      def redirect_to_send_login_mail
+        destination_url = request.env["PATH_INFO"]
+        l = URI.encode_uri_component params[:login]
+        d = URI.encode_uri_component destination_url
+
+        puts "🟣 ... login=#{l} destination_url=#{d}"
+
+        redirect_to "/login-helper/send-login-mail?login=#{l}&destination_url=#{d}"
+      end
+
       def rescue_discourse_actions(type, status_code, opts = nil)
-        # puts "🟣 rescue_discourse_actions type=#{type} opts=#{opts}"
+        puts "🟣 rescue_discourse_actions type=#{type} opts=#{opts}"
 
         return super(type, status_code, opts) if type != :invalid_access || current_user.present?
 
@@ -195,13 +214,8 @@ after_initialize do
         # puts "🔵 params #{params}"
         # puts "🔵 current_user #{current_user} present: #{current_user.present?}"
 
-        destination_url = request.env["PATH_INFO"]
-
         if params[:login].present?
-          l = URI.encode_uri_component params[:login]
-          d = URI.encode_uri_component destination_url
-
-          redirect_to "/login-helper/send-login-mail?login=#{l}&destination_url=#{d}"
+          redirect_to_send_login_mail
         else
           super(type, status_code, opts)
         end
