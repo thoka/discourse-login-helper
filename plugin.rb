@@ -1,6 +1,6 @@
 # name: discourse-login-helper
 # about: shorten process of logging in by email
-# version: 0.6
+# version: 0.7
 # authors: Thomas Kalka
 # url: https://github.com/thoka/discourse-login-helper
 # meta_topic_id: 309676
@@ -111,6 +111,7 @@ after_initialize do
             end
           opts[:html_override] = fragment.to_html
         end
+        @our_domain = URI.parse(Discourse.base_url).host
         super(to, opts)
       end
 
@@ -129,11 +130,13 @@ after_initialize do
       def add_user_to_forum_links(link)
         return link if link.blank?
         escaped_link = escape_non_ascii(link)
-        if links_to_our_discourse?(escaped_link) && !escaped_link.include?("/session")
+        parsed_link = URI.parse(escaped_link)
+        if links_to_our_discourse?(parsed_link)
           # puts "🔵 Changed #{link}"
-          link = URI.parse(escaped_link)
-          query = URI.decode_www_form(link.query || "")
-          link.query = URI.encode_www_form(query << ["login", @to])
+          return link if parsed_link.path.begins_with?("/invites")
+          return link if parsed_link.path.begins_with?("/session")
+          query = URI.decode_www_form(parsed_link.query || "")
+          parsed_link.query = URI.encode_www_form(query << ["login", @to])
           link.to_s
         else
           # puts "🟡 UNCHANGED #{link}"
@@ -143,11 +146,8 @@ after_initialize do
         link
       end
 
-      def links_to_our_discourse?(escaped_link)
-        our_domain = URI.parse(Discourse.base_url).host
-        linked_domain = URI.parse(escaped_link).host
-        # puts "🔵 links_to_our_discourse? #{our_domain} == #{linked_domain}"
-        linked_domain == our_domain
+      def links_to_our_discourse?(parsed_link)
+        parsed_link.host == @our_domain
       end
     end
 
