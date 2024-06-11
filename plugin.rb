@@ -133,8 +133,8 @@ after_initialize do
         parsed_link = URI.parse(escaped_link)
         if links_to_our_discourse?(parsed_link)
           # puts "🔵 Changed #{link}"
-          return link if parsed_link.path.begins_with?("/invites")
-          return link if parsed_link.path.begins_with?("/session")
+          return link if parsed_link.path.start_with?("/invites")
+          return link if parsed_link.path.start_with?("/session")
           query = URI.decode_www_form(parsed_link.query || "")
           parsed_link.query = URI.encode_www_form(query << ["login", @to])
           link.to_s
