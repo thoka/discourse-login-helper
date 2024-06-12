@@ -99,6 +99,7 @@ after_initialize do
         opts ||= {}
         @to = to
         # puts "🔵 MBE::init opts=#{opts.to_yaml}"
+        @our_domain = URI.parse(Discourse.base_url).host
         if SiteSetting.login_helper_enabled && html_override = opts[:html_override]
           fragment = Nokogiri::HTML5.fragment(html_override)
           fragment
@@ -111,7 +112,6 @@ after_initialize do
             end
           opts[:html_override] = fragment.to_html
         end
-        @our_domain = URI.parse(Discourse.base_url).host
         super(to, opts)
       end
 
@@ -132,21 +132,23 @@ after_initialize do
         escaped_link = escape_non_ascii(link)
         parsed_link = URI.parse(escaped_link)
         if links_to_our_discourse?(parsed_link)
-          # puts "🔵 Changed #{link}"
           return link if parsed_link.path.start_with?("/invites")
           return link if parsed_link.path.start_with?("/session")
+          puts "🔵 Changed #{link}"
           query = URI.decode_www_form(parsed_link.query || "")
           parsed_link.query = URI.encode_www_form(query << ["login", @to])
-          link.to_s
+          parsed_link.to_s
         else
-          # puts "🟡 UNCHANGED #{link}"
+          puts "🟡 UNCHANGED #{link}"
           link
         end
       rescue StandardError
+        puts "🟡🟡 RESCUE from #{$!}"
         link
       end
 
       def links_to_our_discourse?(parsed_link)
+        puts "🟡?? to=#{parsed_link.host} here=#{@our_domain}"
         parsed_link.host == @our_domain
       end
     end
