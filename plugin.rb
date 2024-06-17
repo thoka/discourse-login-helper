@@ -1,6 +1,6 @@
 # name: discourse-login-helper
 # about: shorten process of logging in by email
-# version: 0.7
+# version: 0.8
 # authors: Thomas Kalka
 # url: https://github.com/thoka/discourse-login-helper
 # meta_topic_id: 309676
@@ -139,16 +139,16 @@ after_initialize do
           parsed_link.query = URI.encode_www_form(query << ["login", @to])
           parsed_link.to_s
         else
-          puts "🟡 UNCHANGED #{link}"
+          # puts "🟡 UNCHANGED #{link}"
           link
         end
       rescue StandardError
-        puts "🟡🟡 RESCUE from #{$!}"
+        # puts "🟡🟡 RESCUE from #{$!}"
         link
       end
 
       def links_to_our_discourse?(parsed_link)
-        puts "🟡?? to=#{parsed_link.host} here=#{@our_domain}"
+        # puts "🟡?? to=#{parsed_link.host} here=#{@our_domain}"
         parsed_link.host == @our_domain
       end
     end
@@ -190,7 +190,7 @@ after_initialize do
     module ApplicationControllerExtension
       def redirect_to_login_if_required
         return super unless SiteSetting.login_helper_enabled
-        if params[:login].present?
+        if !current_user && params[:login].present?
           redirect_to_send_login_mail
         else
           super
@@ -202,13 +202,13 @@ after_initialize do
         l = URI.encode_uri_component params[:login]
         d = URI.encode_uri_component destination_url
 
-        puts "🟣 ... login=#{l} destination_url=#{d}"
+        # puts "🟣 ... login=#{l} destination_url=#{d}"
 
         redirect_to "/login-helper/send-login-mail?login=#{l}&destination_url=#{d}"
       end
 
       def rescue_discourse_actions(type, status_code, opts = nil)
-        puts "🟣 rescue_discourse_actions type=#{type} opts=#{opts}"
+        # puts "🟣 rescue_discourse_actions type=#{type} opts=#{opts}"
 
         return super(type, status_code, opts) if type != :invalid_access || current_user.present?
 
