@@ -1,6 +1,6 @@
 # name: discourse-login-helper
 # about: shorten process of logging in by email
-# version: 0.8
+# version: 0.9
 # authors: Thomas Kalka
 # url: https://github.com/thoka/discourse-login-helper
 # meta_topic_id: 309676
@@ -85,6 +85,37 @@ after_initialize do
   end
 
   module LoginHelper
+    @@our_domain = URI.parse(Discourse.base_url).host
+
+    class << self
+      def add_user_to_forum_links(link, username)
+        # puts "🔵 add_user_to_forum_links link=#{link} username=#{username}"
+        return link if link.blank?
+        escaped_link = escape_non_ascii(link)
+        parsed_link = URI.parse(escaped_link)
+        if links_to_our_discourse?(parsed_link)
+          return link if parsed_link.path.start_with?("/invites")
+          return link if parsed_link.path.start_with?("/session")
+          query = URI.decode_www_form(parsed_link.query || "")
+          parsed_link.query = URI.encode_www_form(query << ["login", username])
+          parsed_link.to_s
+        else
+          link
+        end
+      rescue StandardError
+        link
+      end
+
+      def links_to_our_discourse?(parsed_link)
+        # puts "🟡?? to=#{parsed_link.host} here=#{@@our_domain}"
+        parsed_link.host == @our_domain || parsed_link.host == "127.0.0.1"
+      end
+
+      def escape_non_ascii(s)
+        s.chars.map { |char| char.ascii_only? ? char : CGI.escape(char) }.join
+      end
+    end
+
     module BuildEmailHelperExtension
       def build_email(to, opts)
         opts ||= {}
@@ -106,7 +137,7 @@ after_initialize do
             .css("a")
             .each do |a|
               if a["href"]
-                a["href"] = add_user_to_forum_links(a["href"]) if a["href"]
+                a["href"] = LoginHelper.add_user_to_forum_links(a["href"], @to) if a["href"]
                 # puts "🟡 a #{a.to_html}🟡"
               end
             end
@@ -119,37 +150,10 @@ after_initialize do
         body = super()
         return body unless SiteSetting.login_helper_enabled
         # puts "🔵 body #{body.to_json}"
-        body.gsub!(URI.regexp) { |match| add_user_to_forum_links(match) } if body && body.present?
-        body
-      end
-
-      def escape_non_ascii(s)
-        s.chars.map { |char| char.ascii_only? ? char : CGI.escape(char) }.join
-      end
-
-      def add_user_to_forum_links(link)
-        return link if link.blank?
-        escaped_link = escape_non_ascii(link)
-        parsed_link = URI.parse(escaped_link)
-        if links_to_our_discourse?(parsed_link)
-          return link if parsed_link.path.start_with?("/invites")
-          return link if parsed_link.path.start_with?("/session")
-          puts "🔵 Changed #{link}"
-          query = URI.decode_www_form(parsed_link.query || "")
-          parsed_link.query = URI.encode_www_form(query << ["login", @to])
-          parsed_link.to_s
-        else
-          # puts "🟡 UNCHANGED #{link}"
-          link
+        if body && body.present?
+          body.gsub!(URI.regexp) { |match| LoginHelper.add_user_to_forum_links(match, @to) }
         end
-      rescue StandardError
-        # puts "🟡🟡 RESCUE from #{$!}"
-        link
-      end
-
-      def links_to_our_discourse?(parsed_link)
-        # puts "🟡?? to=#{parsed_link.host} here=#{@our_domain}"
-        parsed_link.host == @our_domain
+        body
       end
     end
 
@@ -229,6 +233,12 @@ after_initialize do
     ApplicationController.prepend LoginHelper::ApplicationControllerExtension
     Email::MessageBuilder.prepend LoginHelper::MessageBuilderExtension
     SessionController.prepend LoginHelper::SessionControllerExtension
-    UserNotifications.class_eval { prepend LoginHelper::BuildEmailHelperExtension }
+    UserNotifications.prepend LoginHelper::BuildEmailHelperExtension
+    plugin.register_modifier(:email_renderer_html) do |style, message|
+      style
+        .fragment
+        .css("a")
+        .each { |a| a["href"] = LoginHelper.add_user_to_forum_links(a["href"], message.to) }
+    end
   end
 end
