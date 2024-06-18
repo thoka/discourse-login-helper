@@ -96,6 +96,8 @@ after_initialize do
         if links_to_our_discourse?(parsed_link)
           return link if parsed_link.path.start_with?("/invites")
           return link if parsed_link.path.start_with?("/session")
+          return link if parsed_link.path.start_with?("/email/unsubscribe")
+
           query = URI.decode_www_form(parsed_link.query || "")
           parsed_link.query = URI.encode_www_form(query << ["login", username])
           parsed_link.to_s
