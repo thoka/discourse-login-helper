@@ -1,6 +1,6 @@
 # name: discourse-login-helper
 # about: shorten process of logging in by email
-# version: 0.9
+# version: 0.10
 # authors: Thomas Kalka
 # url: https://github.com/thoka/discourse-login-helper
 # meta_topic_id: 309676
@@ -84,7 +84,7 @@ after_initialize do
     end
   end
 
-  module LoginHelper
+  module ::LoginHelper
     @@our_domain = URI.parse(Discourse.base_url).host
 
     class << self
@@ -110,7 +110,7 @@ after_initialize do
 
       def links_to_our_discourse?(parsed_link)
         # puts "🟡?? to=#{parsed_link.host} here=#{@@our_domain}"
-        parsed_link.host == @our_domain || parsed_link.host == "127.0.0.1"
+        parsed_link.host == @@our_domain || parsed_link.host == "127.0.0.1"
       end
 
       def escape_non_ascii(s)
@@ -132,7 +132,6 @@ after_initialize do
         opts ||= {}
         @to = to
         # puts "🔵 MBE::init opts=#{opts.to_yaml}"
-        @our_domain = URI.parse(Discourse.base_url).host
         if SiteSetting.login_helper_enabled && html_override = opts[:html_override]
           fragment = Nokogiri::HTML5.fragment(html_override)
           fragment
