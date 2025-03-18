@@ -97,6 +97,7 @@ after_initialize do
           return link if parsed_link.path.start_with?("/invites")
           return link if parsed_link.path.start_with?("/session")
           return link if parsed_link.path.start_with?("/email/unsubscribe")
+          return link if parsed_link.path.start_with?("/u/")
 
           query = URI.decode_www_form(parsed_link.query || "")
           parsed_link.query = URI.encode_www_form(query << ["login", username])
@@ -104,8 +105,8 @@ after_initialize do
         else
           link
         end
-      rescue StandardError
-        link
+        # rescue StandardError
+        # link
       end
 
       def links_to_our_discourse?(parsed_link)
@@ -118,14 +119,14 @@ after_initialize do
       end
     end
 
-    module BuildEmailHelperExtension
-      def build_email(to, opts)
-        opts ||= {}
-        # puts "🔵 build_email opts=#{opts.to_yaml}"
-        opts[:url] += "?" + URI.encode_www_form({ login: to }).to_s if opts.key?(:url)
-        super(to, opts)
-      end
-    end
+    # module BuildEmailHelperExtension
+    #   def build_email(to, opts)
+    #     opts ||= {}
+    #     # puts "🔵 build_email opts=#{opts.to_yaml}"
+    #     opts[:url] += "?" + URI.encode_www_form({ login: to }).to_s if opts.key?(:url)
+    #     super(to, opts)
+    #   end
+    # end
 
     module MessageBuilderExtension
       def initialize(to, opts = nil)
@@ -234,7 +235,7 @@ after_initialize do
     ApplicationController.prepend LoginHelper::ApplicationControllerExtension
     Email::MessageBuilder.prepend LoginHelper::MessageBuilderExtension
     SessionController.prepend LoginHelper::SessionControllerExtension
-    UserNotifications.prepend LoginHelper::BuildEmailHelperExtension
+    # UserNotifications.prepend LoginHelper::BuildEmailHelperExtension
     plugin.register_modifier(:email_renderer_html) do |style, message|
       style
         .fragment
