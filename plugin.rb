@@ -93,12 +93,10 @@ after_initialize do
         return link if link.blank?
         escaped_link = escape_non_ascii(link)
         parsed_link = URI.parse(escaped_link)
-        if links_to_our_discourse?(parsed_link)
-          return link if parsed_link.path.start_with?("/invites")
-          return link if parsed_link.path.start_with?("/session")
-          return link if parsed_link.path.start_with?("/email/unsubscribe")
-          return link if parsed_link.path.start_with?("/u/")
+        is_category = parsed_link.path.start_with?("/c/")
+        is_topic = parsed_link.path.start_with?("/t/")
 
+        if links_to_our_discourse?(parsed_link) && (is_category || is_topic)
           query = URI.decode_www_form(parsed_link.query || "")
           parsed_link.query = URI.encode_www_form(query << ["login", username])
           parsed_link.to_s
