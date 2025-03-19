@@ -93,8 +93,8 @@ after_initialize do
         return link if link.blank?
         escaped_link = escape_non_ascii(link)
         parsed_link = URI.parse(escaped_link)
-        is_category = parsed_link.path.start_with?("/c/")
-        is_topic = parsed_link.path.start_with?("/t/")
+        is_category = parsed_link.path.starts_with?("/c/")
+        is_topic = parsed_link.path.starts_with?("/t/")
 
         if links_to_our_discourse?(parsed_link) && (is_category || is_topic)
           query = URI.decode_www_form(parsed_link.query || "")
