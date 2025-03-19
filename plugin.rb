@@ -93,18 +93,20 @@ after_initialize do
         return link if link.blank?
         escaped_link = escape_non_ascii(link)
         parsed_link = URI.parse(escaped_link)
-        is_category = parsed_link.path.starts_with?("/c/")
-        is_topic = parsed_link.path.starts_with?("/t/")
 
-        if links_to_our_discourse?(parsed_link) && (is_category || is_topic)
-          query = URI.decode_www_form(parsed_link.query || "")
-          parsed_link.query = URI.encode_www_form(query << ["login", username])
-          parsed_link.to_s
-        else
-          link
+        if links_to_our_discourse?(parsed_link)
+          is_category = parsed_link.path&.start_with?("/c/")
+          is_topic = parsed_link.path&.start_with?("/t/")
+
+          if is_category || is_topic
+            query = URI.decode_www_form(parsed_link.query || "")
+            parsed_link.query = URI.encode_www_form(query << ["login", username])
+            return parsed_link.to_s
+          end
         end
-        # rescue StandardError
-        # link
+        link
+      rescue StandardError
+        link
       end
 
       def links_to_our_discourse?(parsed_link)
