@@ -1,6 +1,6 @@
 # name: discourse-login-helper
 # about: shorten process of logging in by email
-# version: 0.10
+# version: 0.11
 # authors: Thomas Kalka
 # url: https://github.com/thoka/discourse-login-helper
 # meta_topic_id: 309676
@@ -180,7 +180,7 @@ after_initialize do
           elsif payload = login_error_check(user)
             return render json: payload
           else
-            raise Discourse::ReadOnly if staff_writes_only_mode? && !user&.staff?
+            raise Discourse::ReadOnly if staff_writes_only_mode_active? && !user&.staff?
             user.update_timezone_if_missing(params[:timezone])
             log_on_user(user)
 
@@ -189,6 +189,22 @@ after_initialize do
         end
 
         render json: { error: I18n.t("email_login.invalid_token", base_url: Discourse.base_url) }
+      end
+
+      private
+
+      # Compatibility with discourse/discourse@bccf4e0b53 ("FIX: improve \"read only\" modes (#33521)")
+      # which switched controllers to use `@staff_writes_only_mode`/`@readonly_mode` ivars.
+      def staff_writes_only_mode_active?
+        if instance_variable_defined?(:@staff_writes_only_mode)
+          @staff_writes_only_mode
+        elsif respond_to?(:staff_writes_only_mode?)
+          staff_writes_only_mode?
+        elsif Discourse.respond_to?(:staff_writes_only_mode?)
+          Discourse.staff_writes_only_mode?
+        else
+          false
+        end
       end
     end
 
