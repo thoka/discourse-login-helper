@@ -22,10 +22,18 @@ Links contain ?login=<user-email>
 User clicks link (not logged in)
         │
         ▼
-Plugin intercepts request → sends magic login email
+Plugin intercepts request
         │
-        ▼
-Confirmation page shown ("Check your inbox")
+        ├─ No recent token (or force=1) ──► Send magic login email
+        │                                          │
+        │                                          ▼
+        │                               Confirmation page shown
+        │                               ("Check your inbox")
+        │
+        └─ Token sent within last 20 min ─► "Already sent" page shown
+                                                   │
+                                          "Send new link" button
+                                          (triggers resend with force=1)
         │
         ▼
 User clicks magic link in email
@@ -54,10 +62,11 @@ A lightweight Rails controller mounted at `/login-helper`:
 The `send_login_mail` action:
 - Requires `enable_local_logins_via_email` and `login_helper_enabled` to be active.
 - Redirects already-logged-in users to the homepage.
-- Applies rate limiting: 6 requests/hour and 3 requests/minute, both per IP and per user.
-- Creates an `EmailToken` with `scope: :email_login` that stores the `destination_url`.
-- Enqueues a `critical_user_email` job (type `email_login`), which sends the email using Discourse's standard email-login mechanism.
-- Renders a custom confirmation view (`send_login_mail.html.erb`) using the `no_ember` layout.
+- Applies IP-based rate limiting (6/hour, 3/minute) on every request.
+- **Already-sent check**: If a non-confirmed `EmailToken` with scope `email_login` exists for this user within the last 20 minutes, no new email is sent and `@already_sent = true` is set. The user-level rate limiter is not consumed in this case.
+  - This check is bypassed when `params[:force]` is present (used by the "Send new link" button).
+- If sending: applies user-level rate limiting, creates an `EmailToken` with `scope: :email_login` storing the `destination_url`, and enqueues a `critical_user_email` job.
+- Renders `send_login_mail.html.erb` using the `no_ember` layout, passing the `@already_sent` flag.
 
 #### `LoginHelper::MessageBuilderExtension`
 
@@ -109,10 +118,18 @@ Adds a `destination_url` string column to the `email_tokens` table. This stores 
 
 ### View (`send_login_mail.html.erb`)
 
-A minimal confirmation page rendered with the `no_ember` layout (no Ember.js SPA overhead). Shows:
+A minimal confirmation page rendered with the `no_ember` layout (no Ember.js SPA overhead). It handles two states:
+
+**Normal (email just sent):**
 - Site title and description
 - Confirmation that a login email was sent to the user's address
 - Advice to check the spam folder
+
+**Already sent (token within last 20 minutes):**
+- Notice that a link was already sent recently
+- "Send a new login link" button — links to the same endpoint with `force=1`
+
+Both states always show:
 - Contact information (from `SiteSetting.contact_email`)
 - A fallback button: "Show other login options" — submits to `redirect-to-login`, which sets cookies and opens the standard Discourse `/login` page
 
@@ -136,6 +153,8 @@ Translated keys:
 - `login_helper.mail_sent_to` — confirmation message with recipient address
 - `login_helper.click_link` — instruction to click the emailed link
 - `login_helper.search_spam` — spam folder reminder
+- `login_helper.already_sent` — notice that a login link was already sent recently (includes `%{to}`)
+- `login_helper.request_new_link` — "send new link" button label
 - `login_helper.contact_info` — contact link with `contact_email` setting
 - `login_helper.redirect_to_login_page` — fallback button label
 
@@ -179,7 +198,8 @@ plugins/discourse-login-helper/
 
 | Version | Changes |
 |---|---|
-| 0.11 | Current version |
+| 0.12 | Skip resending login email if a valid token was sent within the last 20 minutes; show "already sent" notice with explicit resend button |
+| 0.11 | Previous version |
 | 0.6 | Send login link on all pages when `login` parameter is present |
 | 0.5 | Fix handling of links with Unicode characters; improved disable handling |
 | 0.4 | Store `destination_url` in email tokens and redirect after login |

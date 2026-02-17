@@ -7,4 +7,6 @@ de:
     search_spam: "Wenn Sie keine Mail erhalten haben, überprüfen Sie bitte Ihren Spam-Ordner."
     contact_info: "Schreiben Sie uns bei Problemen gerne an <a href=\"mailto:%{contact}\">%{contact}</a>."
     redirect_to_login_page: "Weitere Login-Optionen öffnen"
+    already_sent: "In den letzten 20 Minuten wurde bereits ein Login-Link an <strong>%{to}</strong> gesendet. Bitte überprüfen Sie Ihren Posteingang (und den Spam-Ordner)."
+    request_new_link: "Neuen Login-Link anfordern"
     

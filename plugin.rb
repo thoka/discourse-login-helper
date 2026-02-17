@@ -1,6 +1,6 @@
 # name: discourse-login-helper
 # about: shorten process of logging in by email
-# version: 0.11
+# version: 0.12
 # authors: Thomas Kalka
 # url: https://github.com/thoka/discourse-login-helper
 # meta_topic_id: 309676
@@ -43,26 +43,39 @@ after_initialize do
       user = User.human_users.find_by_username_or_email(@to)
       user_presence = user.present? && !user.staged
 
+      @already_sent = false
+
       if user
-        RateLimiter.new(nil, "email-login-hour-#{user.id}", 6, 1.hour).performed!
-        RateLimiter.new(nil, "email-login-min-#{user.id}", 3, 1.minute).performed!
+        unless params[:force]
+          @already_sent =
+            user
+              .email_tokens
+              .where(confirmed: false, scope: EmailToken.scopes[:email_login])
+              .where("created_at > ?", 20.minutes.ago)
+              .exists?
+        end
 
-        if user_presence
-          DiscourseEvent.trigger(:before_email_login, user)
+        unless @already_sent
+          RateLimiter.new(nil, "email-login-hour-#{user.id}", 6, 1.hour).performed!
+          RateLimiter.new(nil, "email-login-min-#{user.id}", 3, 1.minute).performed!
 
-          email_token =
-            user.email_tokens.create!(
-              email: user.email,
-              scope: EmailToken.scopes[:email_login],
-              destination_url: @destination_url,
+          if user_presence
+            DiscourseEvent.trigger(:before_email_login, user)
+
+            email_token =
+              user.email_tokens.create!(
+                email: user.email,
+                scope: EmailToken.scopes[:email_login],
+                destination_url: @destination_url,
+              )
+
+            Jobs.enqueue(
+              :critical_user_email,
+              type: "email_login",
+              user_id: user.id,
+              email_token: email_token.token,
             )
-
-          Jobs.enqueue(
-            :critical_user_email,
-            type: "email_login",
-            user_id: user.id,
-            email_token: email_token.token,
-          )
+          end
         end
       end
 

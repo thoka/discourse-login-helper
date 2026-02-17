@@ -5,15 +5,21 @@
 </div>
 
 <div class='container send_login_mail'>
-  <p><%= raw I18n.t "login_helper.mail_sent_to", to: @to %></p>
-  <p><%= I18n.t "login_helper.click_link" %></p>
-  <p><%= I18n.t "login_helper.search_spam" %></p>
-  <p><%= raw I18n.t "login_helper.contact_info", contact: SiteSetting.contact_email %></p>
-  <%# TODO: learn a smarter way to generate this URL %>
   <% d = URI.encode_www_form_component @destination_url %>
   <% l = URI.encode_www_form_component @to %>
+  <% if @already_sent %>
+    <p><%= raw I18n.t "login_helper.already_sent", to: @to %></p>
+    <%= link_to t('login_helper.request_new_link'),
+          "/login-helper/send-login-mail?login=#{l}&destination_url=#{d}&force=1",
+          class: 'btn btn-default' %>
+  <% else %>
+    <p><%= raw I18n.t "login_helper.mail_sent_to", to: @to %></p>
+    <p><%= I18n.t "login_helper.click_link" %></p>
+    <p><%= I18n.t "login_helper.search_spam" %></p>
+  <% end %>
+  <p><%= raw I18n.t "login_helper.contact_info", contact: SiteSetting.contact_email %></p>
   <%= form_tag("/login-helper/redirect-to-login?destination_url=#{d}&login=#{l}") do %>
-    <%= submit_tag t('login_helper.redirect_to_login_page') , class: 'btn' %>
+    <%= submit_tag t('login_helper.redirect_to_login_page'), class: 'btn' %>
   <%- end %>
 </div>
 
